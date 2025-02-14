@@ -44,6 +44,26 @@ def test_read_users(client):
     }
 
 
+def test_read_one_user(client):
+    response = client.get('/users/1')
+
+    assert response.status_code == HTTPStatus.OK
+
+    assert response.json() == {
+            'id': 1,
+            'username': 'test',
+            'email': 'test@test.com'
+    }
+
+
+def test_read_one_user_not_found(client):
+    response = client.get('/users/100')
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+    assert response.json() == {'detail': 'User not found'}
+
+
 def test_update_user(client):
     response = client.put(
         '/users/1',
@@ -93,6 +113,4 @@ def test_delete_user_not_found(client):
 
     assert response.status_code == HTTPStatus.NOT_FOUND
 
-    assert response.json() == {
-        'detail': 'User not found'
-    }
+    assert response.json() == {'detail': 'User not found'}
