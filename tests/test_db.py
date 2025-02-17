@@ -24,7 +24,8 @@ def test_create_user(session, mock_db_time):
         'username': 'daniel',
         'email': 'daniel@test.com',
         'password': 'senha',
-        'created_at': time
+        'created_at': time,
+        'updated_at': time
     }
 
     assert user.username == 'daniel'
