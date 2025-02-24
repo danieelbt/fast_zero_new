@@ -1,20 +1,30 @@
 from http import HTTPStatus
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from fast_zero.database import get_session
 from fast_zero.models import User
-from fast_zero.schemas import Message, UserList, UserPublic, UserSchema
+from fast_zero.schemas import (
+    FilterPage,
+    Message,
+    UserList,
+    UserPublic,
+    UserSchema,
+)
 from fast_zero.security import get_current_user, get_password_hash
 
 router = APIRouter(prefix='/users', tags=['users'])
 
+T_Session = Annotated[Session, Depends(get_session)]
+T_CurrentUser = Annotated[User, Depends(get_current_user)]
+
 
 @router.post('/', status_code=HTTPStatus.CREATED, response_model=UserPublic)
-def create_user(user: UserSchema, session: Session = Depends(get_session)):
+def create_user(user: UserSchema, session: T_Session):
     db_user = session.scalar(
         select(User).where(
             (User.username == user.username) | (User.email == user.email)
@@ -48,11 +58,13 @@ def create_user(user: UserSchema, session: Session = Depends(get_session)):
 
 
 @router.get('/', status_code=HTTPStatus.OK, response_model=UserList)
-def read_users(skip: int = 0, limit: int = 10,
-               session: Session = Depends(get_session)):
+def read_users(
+    session: T_Session,
+    filter_users: Annotated[FilterPage, Query()]
+):
     users = (
         session.scalars(
-            select(User).offset(skip).limit(limit)
+            select(User).offset(filter_users.offset).limit(filter_users.limit)
         ).all()
     )
 
@@ -60,7 +72,7 @@ def read_users(skip: int = 0, limit: int = 10,
 
 
 @router.get('/{user_id}', status_code=HTTPStatus.OK, response_model=UserPublic)
-def read_one_user(user_id: int, session: Session = Depends(get_session)):
+def read_one_user(user_id: int, session: T_Session):
     user = session.scalar(
         select(User).where(User.id == user_id)
     )
@@ -74,13 +86,12 @@ def read_one_user(user_id: int, session: Session = Depends(get_session)):
     return user
 
 
-@router.put('/{user_id}', status_code=HTTPStatus.OK,
-         response_model=UserPublic)
+@router.put('/{user_id}', status_code=HTTPStatus.OK, response_model=UserPublic)
 def update_user(
     user_id: int,
     user: UserSchema,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)):
+    session: T_Session,
+    current_user: T_CurrentUser):
     if current_user.id != user_id:
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
@@ -108,8 +119,8 @@ def update_user(
 @router.delete('/{user_id}', status_code=HTTPStatus.OK, response_model=Message)
 def delete_user(
     user_id: int,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)):
+    session: T_Session,
+    current_user: T_CurrentUser):
 
     if current_user.id != user_id:
         raise HTTPException(

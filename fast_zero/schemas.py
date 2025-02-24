@@ -22,6 +22,11 @@ class UserList(BaseModel):
     users: list[UserPublic]
 
 
+class FilterPage(BaseModel):
+    offset: int = 0
+    limit: int = 10
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str
